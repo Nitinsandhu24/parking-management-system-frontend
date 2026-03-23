@@ -1,30 +1,82 @@
+import { useState, useEffect } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import useAuthStore from '@/store/authStore'
 import useNotificationStore from '@/store/notificationStore'
 import { useAuth } from '@/hooks/useAuth'
+import { tenantApi } from '@/api/tenantApi'
 import clsx from 'clsx'
 
 const navItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: DashIcon },
-  { path: '/parking', label: 'Parking Lots', icon: ParkIcon },
-  { path: '/bookings', label: 'Bookings', icon: BookIcon },
-  { path: '/vehicles', label: 'Vehicle Logs', icon: CarIcon },
-  { path: '/payments', label: 'Payments', icon: PayIcon },
-  { path: '/analytics', label: 'Analytics', icon: ChartIcon, roles: ['ROLE_SUPER_ADMIN', 'ROLE_TENANT_ADMIN'] },
-  { path: '/admin', label: 'Tenant Admin', icon: AdminIcon, roles: ['ROLE_SUPER_ADMIN'] },
+  { path: '/dashboard', label: 'Dashboard',    icon: DashIcon  },
+  { path: '/parking',   label: 'Parking Lots', icon: ParkIcon  },
+  { path: '/bookings',  label: 'Bookings',     icon: BookIcon  },
+  { path: '/vehicles',  label: 'Vehicle Logs', icon: CarIcon   },
+  { path: '/payments',  label: 'Payments',     icon: PayIcon   },
+  { path: '/analytics', label: 'Analytics',    icon: ChartIcon, roles: ['ROLE_SUPER_ADMIN', 'ROLE_TENANT_ADMIN'] },
+  { path: '/admin',     label: 'Tenant Admin', icon: AdminIcon, roles: ['ROLE_SUPER_ADMIN'] },
 ]
 
+// ── Tenant Switcher (Super Admin only) ────────────────────────────────────────
+function TenantSwitcher() {
+  const hasRole  = useAuthStore(s => s.hasRole)
+  const isSuperAdmin = () => hasRole('ROLE_SUPER_ADMIN')
+  const [tenants, setTenants]   = useState([])
+  const [selected, setSelected] = useState(
+    localStorage.getItem('selected_tenant_id') ?? ''
+  )
+
+  useEffect(() => {
+    if (!isSuperAdmin()) return
+    tenantApi.getAll()
+      .then(res => {
+        const active = res.data.filter(t => t.active && t.id !== 'master')
+        setTenants(active)
+        // Auto-select first tenant if none selected yet
+        if (!localStorage.getItem('selected_tenant_id') && active.length > 0) {
+          setSelected(active[0].id)
+          localStorage.setItem('selected_tenant_id', active[0].id)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  if (!isSuperAdmin()) return null
+  if (tenants.length === 0) return null
+
+  const handleChange = e => {
+    const val = e.target.value
+    setSelected(val)
+    localStorage.setItem('selected_tenant_id', val)
+    window.location.reload()
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs text-surface-500">Viewing:</span>
+      <select
+        value={selected}
+        onChange={handleChange}
+        className="text-xs bg-surface-800 border border-surface-700 text-surface-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer">
+        {tenants.map(t => (
+          <option key={t.id} value={t.id}>{t.name}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+// ── Main Layout ───────────────────────────────────────────────────────────────
 export default function AppLayout() {
   useWebSocket()
   const location = useLocation()
   const navigate = useNavigate()
   const { logout, user } = useAuth()
-  const hasRole = useAuthStore((s) => s.hasRole)
+  const hasRole  = useAuthStore(s => s.hasRole)
   const { unreadCount, wsConnected } = useNotificationStore()
 
   const visibleNav = navItems.filter(
-    (item) => !item.roles || item.roles.some((r) => hasRole(r))
+    item => !item.roles || item.roles.some(r => hasRole(r))
   )
 
   return (
@@ -35,7 +87,7 @@ export default function AppLayout() {
         <div className="px-5 py-5 border-b border-surface-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
-              <ParkIconSolid className="w-4 h-4 text-white" />
+              <ParkIconSolid className="w-4 h-4 text-white"/>
             </div>
             <span className="font-semibold text-surface-50 text-lg tracking-tight">ParkOS</span>
           </div>
@@ -46,15 +98,13 @@ export default function AppLayout() {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {visibleNav.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
+          {visibleNav.map(item => (
+            <button key={item.path} onClick={() => navigate(item.path)}
               className={clsx('nav-item w-full text-left', {
-                active: location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)),
-              })}
-            >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
+                active: location.pathname === item.path ||
+                  (item.path !== '/dashboard' && location.pathname.startsWith(item.path)),
+              })}>
+              <item.icon className="w-4 h-4 flex-shrink-0"/>
               {item.label}
             </button>
           ))}
@@ -71,7 +121,7 @@ export default function AppLayout() {
               <p className="text-xs text-surface-500 truncate">{user?.email}</p>
             </div>
             <button onClick={logout} className="text-surface-500 hover:text-surface-200 transition-colors p-1" title="Log out">
-              <LogoutIcon className="w-4 h-4" />
+              <LogoutIcon className="w-4 h-4"/>
             </button>
           </div>
         </div>
@@ -82,17 +132,22 @@ export default function AppLayout() {
         {/* Topbar */}
         <header className="h-14 flex items-center justify-between px-6 bg-surface-900 border-b border-surface-800 flex-shrink-0">
           <h1 className="text-sm font-medium text-surface-400">
-            {visibleNav.find((n) => location.pathname.startsWith(n.path))?.label ?? 'Dashboard'}
+            {visibleNav.find(n => location.pathname.startsWith(n.path))?.label ?? 'Dashboard'}
           </h1>
           <div className="flex items-center gap-3">
+            {/* Tenant switcher — Super Admin only */}
+            <TenantSwitcher/>
+
             {/* WS status dot */}
             <div className="flex items-center gap-1.5 text-xs text-surface-500">
-              <span className={clsx('w-1.5 h-1.5 rounded-full', wsConnected ? 'bg-emerald-400' : 'bg-surface-600')} />
+              <span className={clsx('w-1.5 h-1.5 rounded-full',
+                wsConnected ? 'bg-emerald-400' : 'bg-surface-600')}/>
               {wsConnected ? 'Live' : 'Offline'}
             </div>
+
             {/* Notification bell */}
             <button className="relative btn-ghost p-2">
-              <BellIcon className="w-4 h-4" />
+              <BellIcon className="w-4 h-4"/>
               {unreadCount > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-brand-500 text-white text-[10px] flex items-center justify-center font-medium">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -104,14 +159,14 @@ export default function AppLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
+          <Outlet/>
         </main>
       </div>
     </div>
   )
 }
 
-/* Inline SVG icons (no external dep needed) */
+/* ── Inline SVG icons ──────────────────────────────────────────────────────── */
 function DashIcon({ className }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
 }

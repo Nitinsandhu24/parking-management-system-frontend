@@ -75,10 +75,15 @@ public class ParkingController {
         long available = lot.getFloors().stream()
                 .flatMap(f -> f.getSlots().stream())
                 .filter(s -> s.getStatus() == SlotStatus.AVAILABLE).count();
-        int total = lot.getFloors().stream().mapToInt(f -> f.getSlots().size()).sum();
-        return new ParkingDTOs.LotResponse(lot.getId(), lot.getName(), lot.getAddress(),
-                lot.getCity(), lot.getState(), lot.getLatitude(), lot.getLongitude(),
-                lot.isActive(), total, available);
+        int total = lot.getFloors().stream()
+                .mapToInt(f -> f.getSlots().size()).sum();
+        return new ParkingDTOs.LotResponse(
+                lot.getId(), lot.getName(), lot.getAddress(),
+                lot.getCity(), lot.getState(),
+                lot.getLatitude(), lot.getLongitude(),
+                lot.isActive(), total, available,
+                lot.getPricePerHour()
+        );
     }
 
     private ParkingDTOs.FloorResponse toFloorResponse(ParkingFloor floor) {

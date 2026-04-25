@@ -35,6 +35,7 @@ public class ParkingService {
                 .state(request.state())
                 .latitude(request.latitude())
                 .longitude(request.longitude())
+                .pricePerHour(request.pricePerHour())
                 .build();
         return lotRepository.save(lot);
     }

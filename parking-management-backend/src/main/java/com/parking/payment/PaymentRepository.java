@@ -14,6 +14,11 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     Optional<Payment> findByBookingId(UUID bookingId);
     Page<Payment> findByStatus(PaymentStatus status, Pageable pageable);
 
-    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.status = 'SUCCESS' AND p.paidAt >= :since")
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.status = com.parking.payment.PaymentStatus.SUCCESS AND p.paidAt >= :since")
     BigDecimal sumSuccessfulPaymentsSince(LocalDateTime since);
+
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p " +
+            "WHERE p.status = 'SUCCESS' " +
+            "AND (p.paidAt >= :since OR (p.paidAt IS NULL AND p.updatedAt >= :since))")
+    BigDecimal sumRevenueToday(LocalDateTime since);
 }

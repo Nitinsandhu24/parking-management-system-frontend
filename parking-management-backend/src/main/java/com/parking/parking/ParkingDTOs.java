@@ -2,6 +2,7 @@ package com.parking.parking;
 
 import jakarta.validation.constraints.NotBlank;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,7 +14,8 @@ public class ParkingDTOs {
             String city,
             String state,
             Double latitude,
-            Double longitude
+            Double longitude,
+            BigDecimal pricePerHour
     ) {}
 
     public record LotResponse(
@@ -26,7 +28,8 @@ public class ParkingDTOs {
             Double longitude,
             boolean active,
             int totalSlots,
-            long availableSlots
+            long availableSlots,
+            BigDecimal pricePerHour
     ) {}
 
     public record FloorResponse(

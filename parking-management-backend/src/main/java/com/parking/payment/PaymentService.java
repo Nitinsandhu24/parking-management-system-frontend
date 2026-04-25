@@ -37,11 +37,11 @@ public class PaymentService {
         Booking booking = bookingRepository.findById(request.bookingId())
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        if (booking.getStatus() != BookingStatus.CHECKED_OUT) {
-            throw new RuntimeException("Payment can only be initiated after checkout");
+        if (booking.getStatus() == BookingStatus.CANCELLED ||
+                booking.getStatus() == BookingStatus.NO_SHOW) {
+            throw new RuntimeException("Payment cannot be initiated for a cancelled booking");
         }
 
-        // Check if payment already exists
         paymentRepository.findByBookingId(request.bookingId())
                 .ifPresent(p -> { throw new RuntimeException("Payment already exists for this booking"); });
 
@@ -54,11 +54,13 @@ public class PaymentService {
                 .status(PaymentStatus.PENDING)
                 .build();
 
-        payment = paymentRepository.save(payment);
+        payment = paymentRepository.saveAndFlush(payment);
 
-        // For CASH payments, auto-confirm immediately
+        // For CASH payments auto-confirm — reload fresh from DB first
         if (request.method() == PaymentMethod.CASH) {
-            payment = confirmPayment(payment.getId(), null);
+            payment.setStatus(PaymentStatus.SUCCESS);
+            payment.setPaidAt(LocalDateTime.now());
+            payment = paymentRepository.saveAndFlush(payment);
         }
 
         return payment;
@@ -69,8 +71,8 @@ public class PaymentService {
         Payment payment = findById(paymentId);
         payment.setStatus(PaymentStatus.SUCCESS);
         payment.setTransactionId(transactionId);
-        payment.setPaidAt(LocalDateTime.now());
-        return paymentRepository.save(payment);
+        payment.setPaidAt(LocalDateTime.now());   // make sure this line exists
+        return paymentRepository.saveAndFlush(payment);
     }
 
     @Transactional
@@ -91,8 +93,14 @@ public class PaymentService {
     }
 
     private BigDecimal calculateAmount(Booking booking) {
-        LocalDateTime start = booking.getCheckedInAt() != null ? booking.getCheckedInAt() : booking.getStartTime();
-        LocalDateTime end   = booking.getCheckedOutAt() != null ? booking.getCheckedOutAt() : LocalDateTime.now();
+        LocalDateTime start = booking.getCheckedInAt() != null
+                ? booking.getCheckedInAt()
+                : booking.getStartTime();
+        LocalDateTime end = booking.getCheckedOutAt() != null
+                ? booking.getCheckedOutAt()
+                : booking.getEndTime() != null
+                ? booking.getEndTime()
+                : LocalDateTime.now();
         long minutes = Duration.between(start, end).toMinutes();
         long hours = Math.max(1, (long) Math.ceil(minutes / 60.0));
         return HOURLY_RATE.multiply(BigDecimal.valueOf(hours));

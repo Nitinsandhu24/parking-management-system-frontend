@@ -32,6 +32,9 @@ public class ParkingLot {
     private Double latitude;
     private Double longitude;
 
+    @Column(precision = 10, scale = 2)
+    private java.math.BigDecimal pricePerHour;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean active = true;

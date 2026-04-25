@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ParkingSlotRepository extends JpaRepository<ParkingSlot, UUID> {
+    long countByStatus(SlotStatus status);
     List<ParkingSlot> findByFloorId(UUID floorId);
     List<ParkingSlot> findByFloorIdAndStatus(UUID floorId, SlotStatus status);
 

@@ -1,6 +1,9 @@
 package com.parking.analytics;
 
 import com.parking.booking.BookingRepository;
+import com.parking.parking.ParkingLotRepository;
+import com.parking.parking.ParkingSlotRepository;
+import com.parking.parking.SlotStatus;
 import com.parking.payment.PaymentRepository;
 import com.parking.vehicle.VehicleLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,19 +23,29 @@ public class AnalyticsService {
     private final BookingRepository bookingRepository;
     private final PaymentRepository paymentRepository;
     private final VehicleLogRepository vehicleLogRepository;
+    private final ParkingSlotRepository slotRepository;
+    private final ParkingLotRepository lotRepository;
 
     public AnalyticsDTOs.DashboardSummary getDashboardSummary() {
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
 
-        long activeBookings = bookingRepository.countActiveBookings();
-        long vehiclesToday  = vehicleLogRepository.countEntriesSince(todayStart);
-        BigDecimal revenueToday = paymentRepository.sumSuccessfulPaymentsSince(todayStart);
+        long activeBookings     = bookingRepository.countActiveBookings();
+        long vehiclesToday      = vehicleLogRepository.countEntriesSince(todayStart);
+        BigDecimal revenueToday = paymentRepository.sumRevenueToday(todayStart);
+        long availableSlots     = slotRepository.countByStatus(SlotStatus.AVAILABLE);
+        long occupiedSlots      = slotRepository.countByStatus(SlotStatus.OCCUPIED);
+        long reservedSlots      = slotRepository.countByStatus(SlotStatus.RESERVED);
+        long totalLots          = lotRepository.count();
 
         return new AnalyticsDTOs.DashboardSummary(
                 activeBookings,
                 vehiclesToday,
                 revenueToday,
-                true   // paymentGatewayOk — stub; wire to actual health check if needed
+                true,
+                availableSlots,
+                occupiedSlots,
+                reservedSlots,
+                totalLots
         );
     }
 

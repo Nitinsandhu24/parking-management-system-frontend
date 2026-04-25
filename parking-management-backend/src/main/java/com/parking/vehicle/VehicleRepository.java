@@ -9,4 +9,5 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     List<Vehicle> findByUserId(UUID userId);
     Optional<Vehicle> findByPlateNumber(String plateNumber);
     boolean existsByPlateNumber(String plateNumber);
+
 }

@@ -1,0 +1,1 @@
+ALTER TABLE parking_lots ADD COLUMN IF NOT EXISTS price_per_hour DECIMAL(10,2);

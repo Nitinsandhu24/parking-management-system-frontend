@@ -34,9 +34,9 @@ public class JwtFilter extends OncePerRequestFilter {
                 return;
             }
 
-            final String token = authHeader.substring(7);
-            final String username = jwtUtil.extractUsername(token);
-            final String tenantId = jwtUtil.extractTenantId(token);
+            final String token        = authHeader.substring(7);
+            final String username     = jwtUtil.extractUsername(token);
+            final String jwtTenantId  = jwtUtil.extractTenantId(token);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -48,9 +48,18 @@ public class JwtFilter extends OncePerRequestFilter {
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                    // Set tenant context for this request thread
-                    if (tenantId != null) {
-                        TenantContext.setTenantId(tenantId);
+                    // Priority 1: X-Tenant-ID header (lets Super Admin switch tenants)
+                    // Priority 2: tenant from JWT token
+                    String headerTenantId = request.getHeader("X-Tenant-ID");
+
+                    if (headerTenantId != null
+                            && !headerTenantId.isBlank()
+                            && !headerTenantId.equals("master")) {
+                        // Use header tenant — Super Admin viewing a specific tenant
+                        TenantContext.setTenantId(headerTenantId);
+                    } else if (jwtTenantId != null) {
+                        // Fall back to JWT tenant
+                        TenantContext.setTenantId(jwtTenantId);
                     }
                 }
             }

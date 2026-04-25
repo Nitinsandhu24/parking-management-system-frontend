@@ -24,8 +24,11 @@ public class BookingController {
 
     @GetMapping
     public ResponseEntity<Page<BookingDTOs.BookingResponse>> getAll(
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(bookingService.findAll(pageable).map(BookingDTOs.BookingResponse::from));
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestHeader(value = "X-Tenant-ID", required = false) String tenantId) {
+        return ResponseEntity.ok(
+                bookingService.findAll(pageable).map(BookingDTOs.BookingResponse::from)
+        );
     }
 
     @GetMapping("/{id}")

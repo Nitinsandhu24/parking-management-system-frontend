@@ -8,7 +8,11 @@ public class AnalyticsDTOs {
             long activeBookings,
             long vehiclesToday,
             BigDecimal revenueToday,
-            boolean paymentGatewayOk
+            boolean paymentGatewayOk,
+            long availableSlots,
+            long occupiedSlots,
+            long reservedSlots,
+            long totalLots
     ) {}
 
     public record OccupancyPoint(String date, double occupancyPercent) {}
